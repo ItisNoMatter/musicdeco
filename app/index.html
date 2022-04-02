@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>MUSIC DECORATOR</title>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, viewport-fit=cover">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@magenta/music@1.9.0"></script>
+    <!--<script src="https://cdn.jsdelivr.net/npm/d3@5.7.0/dist/d3.min.js"></script>-->
+    <link href="https://fonts.googleapis.com/css?family=IBM+Plex+Mono:400,700&display=optional" rel="stylesheet">
+    <link rel="icon" type="image/png" sizes="16x16" href="/app/favicon.png">
+  </head>  
+  
+  <body>
+    
+    <div class="full" id="mainScreen">
+      <div class="content">
+        
+        <section id="section">
+          <h1>MUSIC DECORATOR</h1>
+          <p>メロディの入ったMidiファイルをアップロードして、コード進行を入力すると、<b>AIがコード進行に沿った伴奏を生成</b>します!</p>
+          <h2>Choose your sound</h2>
+            <p>伴奏を付けたいメロディのmidiファイルをアップロードしてください。</p>
+            <label class="button" id="fileBtn">
+              load from computer
+              <input type="file" id="fileInput" multiple>
+            </label>
+            <b>or</b><br>
+            <button id="sampleBtn" class="button">
+              load our example
+            </button>
+            <b>or</b><br>
+            <!--<input id="urlInput" type="text" value="https://bitmidi.com/uploads/15119.mid">-->
+            <input id="urlInput" type="text" placeholder="ここにmidiファイルへのリンクを入れてください">
+            <button id="urlBtn" class="button">
+              load from url
+            </button>
+            <b>or</b><br>
+            <div id="ddarea" ><p>drop a midi file here</p></div>
+
+          <b><p id="status" hidden></p></b>
+
+          <div id="input" hidden>
+            <h2>Original Sound</h2>
+            <p>アップロードされたメロディ:</p>
+            <div class="relative">
+              <button id="btnPlayInput" class="button-circle" aria-label="play">
+                <svg class="iconPlay" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewbox="0 0 24 24"><path d="M8 5v14l11-7z"/><path d="M0 0h24v24H0z" fill="none"/></svg>
+                <svg class="iconStop" hidden xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewbox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none"/><path d="M6 6h12v12H6z"/></svg> 
+                <!--
+                <svg class="iconPlay" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/><path d="M0 0h24v24H0z" fill="none"/></svg>
+                <svg class="iconStop" hidden xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none"/><path d="M6 6h12v12H6z"/></svg> 
+                 -->
+              </button>
+              <div class="visualizer-container cream">
+                <svg id="vizInput"></svg>
+              </div>
+            </div>
+          </div>
+          <div id="chord-progression" hidden>
+            <h2>Arrange Sound</h2>
+              <p>好みのコード進行を入力してください。入力されたコード進行に沿ってAIが伴奏を生成します。</p>
+            <!--<p><b>Chord progression: </b><br>-->
+              <!--<p>コード進行を入力してください</p>-->
+              <span id="chordsContainer" class="chords-container" disabled>
+                <input id="chord1" type="text" value="N.C.">
+                <input id="chord2" type="text" value="N.C.">
+                <input id="chord3" type="text" value="N.C.">
+                <input id="chord4" type="text" value="N.C.">
+              </span>
+              <button id="changeChords" class="button">Change</button>
+            </p>
+          </div>
+
+          <div id="chord-suggest" hidden>
+            <h2>Chord Suggestion</h2>
+            <p>アップロードされた音楽の各小節先頭で鳴らされている音からコードを検索することができます。playボタンを押すとそのコードの音を再生、setボタンを押すとコード進行の入力欄に自動的に入力されます。</p>
+            <p><select name="bar-number" id="bar-number"></select><span id="additional-text">小節目の先頭の音から検索</span></p>
+            <form name="form1" action="#">
+              <!--<select name="sound-name" id="sound-list"></select>-->
+              <div id="sound-list" class="sound-list"></div>
+            </form>
+            <button id="search-and" class="button">AND検索</button>
+            <button id="search-or" class="button">OR検索</button>
+            <h3 id="output-text"></h3>
+            <div class="wrap-table100">
+              <div class="table100">
+                <table>
+                  <thead>
+                    <tr class="table100-head">
+                      <th class="column1">No.</th>
+                      <th class="column2">Base</th>
+                      <th class="column3">Scale</th>
+                      <th class="column4">Notes</th>
+                      <th class="column5">Description</th>
+                      <th class="column6">Sound</th>
+                      <th class="column7"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="chord-list">
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <button class="button" id="load-musicvae" hidden> Generate Music </button>
+
+          <div id="musicvae" hidden>
+            <div class="preamble">
+              <div id="status_vae" class="loading">Loading model (25 MB)...</div>
+            </div>
+            
+            <div class="bottom" id="controls" disabled>
+              <div style="text-align: center;">
+                <!--<button id="play" hidden>play</button>-->
+                <button id="download" class="button">Save as MIDI</button>
+              </div>
+              <div class="horizontal">
+                <p>Randomを押すとランダムに音楽が生成されます。どちらのStyleに近づけるかsliderを動かすことで決められます。（？）</p>
+                <div class="random-slider">
+                  <div id="style1">
+                    <h3>Style 1</h3>
+                    <button id="sample1" class="button">Random</button>
+                  </div>
+                  <input id="alpha" type="range" min="0" max="10" value="0">
+                  <div id="style2">
+                    <h3>Style 2</h3>
+                    <button id="sample2" class="button">Random</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!--<p>This is what your file sounds like:</p>-->
+            <!--<button onclick="test()">test</button>-->
+            <div id="generated-music" hidden>
+            <div class="relative">
+              <button id="btnPlayVAE" class="button-circle" aria-label="play">
+                <svg class="iconPlay" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewbox="0 0 24 24"><path d="M8 5v14l11-7z"/><path d="M0 0h24v24H0z" fill="none"/></svg>
+                <svg class="iconStop" hidden xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewbox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none"/><path d="M6 6h12v12H6z"/></svg> 
+                <!--
+                <svg class="iconPlay" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/><path d="M0 0h24v24H0z" fill="none"/></svg>
+                <svg class="iconStop" hidden xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none"/><path d="M6 6h12v12H6z"/></svg> 
+                 -->
+              </button>
+              <div class="visualizer-container cream">
+                <svg id="vizMusicVAE"></svg>
+              </div>
+            </div>
+            </div>
+          </div>
+
+          <div id="simul" hidden>
+            <h2>
+              Simultaniously Playback
+            </h2>
+            <p>アップロードした音楽と自動生成した音楽を同時再生できます。</p>
+            <button id="SimulBtn" class="button">load two Sequences</button>
+            <button id="SaveBtn" class="button">Download sequence below</button>
+            <!--<p>This is what your file sounds like:</p>-->
+            <div id="playback-simul" hidden>
+            <div class="relative">
+              <button id="btnPlaySimul" class="button-circle" aria-label="play">
+                <svg class="iconPlay" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewbox="0 0 24 24"><path d="M8 5v14l11-7z"/><path d="M0 0h24v24H0z" fill="none"/></svg>
+                <svg class="iconStop" hidden xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewbox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none"/><path d="M6 6h12v12H6z"/></svg> 
+                <!--
+                <svg class="iconPlay" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/><path d="M0 0h24v24H0z" fill="none"/></svg>
+                <svg class="iconStop" hidden xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none"/><path d="M6 6h12v12H6z"/></svg> 
+                 -->
+              </button>
+              <div class="visualizer-container cream">
+                <svg id="vizSimul"></svg>
+              </div>
+            </div>
+            </div>
+          </div>
+        </section>
+        
+      </div>
+    </div>
+    
+    <div class="content">
+      
+    </div>
+  </body>  
+  <!--<script src="multitrack-chords/script.js"></script>-->
+  <!--<script src="musicvae/model_runner.js"></script>-->
+  <script src="chordfinder-sample/chordDataset.js"></script>
+  <script src="script-chordfinder.js"></script>
+  <script src="helpers.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.3/FileSaver.min.js"></script><!--saveAsを使うのに必要-->
+  <script src="script.js"></script>
+</html>
